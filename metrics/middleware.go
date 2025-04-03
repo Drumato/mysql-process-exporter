@@ -29,10 +29,12 @@ func OndemandUpdateMetricsMiddleware(
 			defer func() {
 				if err := rows.Close(); err != nil {
 					slog.ErrorContext(c.Request().Context(), "failed to close rows", slog.String("error", err.Error()))
+					if err = c.JSON(http.StatusInternalServerError, map[string]string{
+						"error": "failed to close rows",
+					}); err != nil {
+						slog.ErrorContext(c.Request().Context(), "failed to set reponse to internal-server-error", slog.String("error", err.Error()))
+					}
 				}
-				c.JSON(http.StatusInternalServerError, map[string]string{
-					"error": "failed to close rows",
-				})
 			}()
 
 			for rows.Next() {
