@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/samber/lo"
@@ -25,7 +26,14 @@ func OndemandUpdateMetricsMiddleware(
 			if err != nil {
 				log.Fatalf("Failed to execute query: %v", err)
 			}
-			defer rows.Close()
+			defer func() {
+				if err := rows.Close(); err != nil {
+					slog.ErrorContext(c.Request().Context(), "failed to close rows", slog.String("error", err.Error()))
+				}
+				c.JSON(http.StatusInternalServerError, map[string]string{
+					"error": "failed to close rows",
+				})
+			}()
 
 			for rows.Next() {
 				var (
@@ -41,11 +49,15 @@ func OndemandUpdateMetricsMiddleware(
 
 				if err := rows.Scan(&idC, &userC, &hostC, &dbNameC, &commandC, &timeC, &stateC, &infoC); err != nil {
 					logger.ErrorContext(c.Request().Context(), "Failed to scan row", slog.Any("error", err))
-					continue
+					return c.JSON(http.StatusInternalServerError, map[string]string{
+						"error": "failed to close rows",
+					})
 				}
 				if !timeC.Valid {
 					logger.ErrorContext(c.Request().Context(), "Invalid time value", slog.Any("time", timeC))
-					continue
+					return c.JSON(http.StatusInternalServerError, map[string]string{
+						"error": "failed to close rows",
+					})
 				}
 
 				id := fmt.Sprintf("%d", lo.If(idC.Valid, idC.Int64).Else(0))
@@ -69,6 +81,9 @@ func OndemandUpdateMetricsMiddleware(
 
 			if err := rows.Err(); err != nil {
 				logger.ErrorContext(c.Request().Context(), "Row iteration error", slog.Any("error", err))
+				return c.JSON(http.StatusInternalServerError, map[string]string{
+					"error": "failed to close rows",
+				})
 			}
 			return next(c)
 		}

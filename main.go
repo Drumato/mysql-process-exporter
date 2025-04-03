@@ -16,7 +16,6 @@ import (
 
 	"github.com/Drumato/mysql-process-exporter/metrics"
 	"github.com/go-sql-driver/mysql"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
